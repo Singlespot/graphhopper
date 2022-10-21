@@ -20,6 +20,7 @@ package com.graphhopper.matching;
 import com.carrotsearch.hppc.IntHashSet;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.config.Profile;
+import com.graphhopper.jackson.ResponsePathSerializer;
 import com.graphhopper.routing.AStarBidirection;
 import com.graphhopper.routing.DijkstraBidirectionRef;
 import com.graphhopper.routing.Path;
@@ -199,7 +200,7 @@ public class MapMatching {
 
         // Snap observations to links. Generates multiple candidate snaps per observation.
         List<Collection<Snap>> snapsPerObservation = filteredObservations.stream()
-                .map(o -> findCandidateSnaps(o.getPoint().lat, o.getPoint().lon))
+                .map(o -> findCandidateSnaps(o.getPoint().lat, o.getPoint().lon, o.getPoint().accuracy))
                 .collect(Collectors.toList());
         statistics.put("snapsPerObservation", snapsPerObservation.stream().mapToInt(Collection::size).toArray());
 
@@ -269,9 +270,10 @@ public class MapMatching {
         return filtered;
     }
 
-    public List<Snap> findCandidateSnaps(final double queryLat, final double queryLon) {
-        double rLon = (measurementErrorSigma * 360.0 / DistanceCalcEarth.DIST_EARTH.calcCircumference(queryLat));
-        double rLat = measurementErrorSigma / DistanceCalcEarth.METERS_PER_DEGREE;
+    public List<Snap> findCandidateSnaps(final double queryLat, final double queryLon, final double queryMeasurementErrorSigma) {
+        double errorSigma = Double.isNaN(queryMeasurementErrorSigma) ? measurementErrorSigma : queryMeasurementErrorSigma;
+        double rLon = (errorSigma * 360.0 / DistanceCalcEarth.DIST_EARTH.calcCircumference(queryLat));
+        double rLat = errorSigma / DistanceCalcEarth.METERS_PER_DEGREE;
         Envelope envelope = new Envelope(queryLon, queryLon, queryLat, queryLat);
         for (int i = 0; i < 50; i++) {
             envelope.expandBy(rLon, rLat);
