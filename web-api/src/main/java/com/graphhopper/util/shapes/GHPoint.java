@@ -28,10 +28,16 @@ import java.util.Locale;
 public class GHPoint {
     public double lat = Double.NaN;
     public double lon = Double.NaN;
+    public double accuracy = Double.NaN;
 
     public GHPoint() {
     }
 
+    public GHPoint(double lat, double lon, double accuracy) {
+        this.lat = lat;
+        this.lon = lon;
+        this.accuracy = accuracy;
+    }
     public GHPoint(double lat, double lon) {
         this.lat = lat;
         this.lon = lon;
@@ -55,8 +61,7 @@ public class GHPoint {
 
     private static GHPoint fromString(String str, boolean lonLatOrder) {
         String[] fromStrs = str.split(",");
-        if (fromStrs.length != 2)
-            throw new IllegalArgumentException("Cannot parse point '" + str + "'");
+        if (fromStrs.length != 2) throw new IllegalArgumentException("Cannot parse point '" + str + "'");
 
         try {
             double fromLat = Double.parseDouble(fromStrs[0]);
@@ -93,8 +98,7 @@ public class GHPoint {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null)
-            return false;
+        if (obj == null) return false;
 
         @SuppressWarnings("unchecked") final GHPoint other = (GHPoint) obj;
         return NumHelper.equalsEps(lat, other.lat) && NumHelper.equalsEps(lon, other.lon);

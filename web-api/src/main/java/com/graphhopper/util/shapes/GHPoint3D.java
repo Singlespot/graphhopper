@@ -30,6 +30,11 @@ public class GHPoint3D extends GHPoint {
         this.ele = elevation;
     }
 
+    public GHPoint3D(double lat, double lon, double elevation, double accuracy) {
+        super(lat, lon, accuracy);
+        this.ele = elevation;
+    }
+
     public double getEle() {
         return ele;
     }
@@ -48,21 +53,21 @@ public class GHPoint3D extends GHPoint {
 
         @SuppressWarnings("unchecked")
         final GHPoint3D other = (GHPoint3D) obj;
-        if (Double.isNaN(ele))
+        if (Double.isNaN(ele) || Double.isNaN(accuracy))
             // very special case necessary in QueryGraph, asserted via test
             return NumHelper.equalsEps(lat, other.lat) && NumHelper.equalsEps(lon, other.lon);
         else
             return NumHelper.equalsEps(lat, other.lat) && NumHelper.equalsEps(lon, other.lon)
-                    && NumHelper.equalsEps(ele, other.ele);
+                    && NumHelper.equalsEps(ele, other.ele) && NumHelper.equalsEps(accuracy, other.accuracy);
     }
 
     @Override
     public String toString() {
-        return super.toString() + "," + ele;
+        return super.toString() + "," + ele + "," + accuracy;
     }
 
     @Override
     public Double[] toGeoJson() {
-        return new Double[]{lon, lat, ele};
+        return new Double[]{lon, lat, ele, accuracy};
     }
 }

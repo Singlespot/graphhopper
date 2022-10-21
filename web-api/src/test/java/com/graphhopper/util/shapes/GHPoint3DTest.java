@@ -32,16 +32,24 @@ public class GHPoint3DTest {
         GHPoint3D point2 = new GHPoint3D(1, 2, Double.NaN);
         assertEquals(point1, point2);
 
-        point1 = new GHPoint3D(1, 2, 0);
-        point2 = new GHPoint3D(1, 2, 1);
+        point1 = new GHPoint3D(1, 2, 3, Double.NaN);
+        point2 = new GHPoint3D(1, 2, 3, Double.NaN);
+        assertEquals(point1, point2);
+
+        point1 = new GHPoint3D(1, 2, 0, 0);
+        point2 = new GHPoint3D(1, 2, 1, 0);
         assertNotEquals(point1, point2);
 
-        point1 = new GHPoint3D(1, 2, 0);
-        point2 = new GHPoint3D(1, 2.1, 0);
+        point1 = new GHPoint3D(1, 2, 0, 0);
+        point2 = new GHPoint3D(1, 2, 0, 1);
         assertNotEquals(point1, point2);
 
-        point1 = new GHPoint3D(1, 2.1, 0);
-        point2 = new GHPoint3D(1, 2.1, 0);
+        point1 = new GHPoint3D(1, 2, 0, 0);
+        point2 = new GHPoint3D(1, 2.1, 0, 0);
+        assertNotEquals(point1, point2);
+
+        point1 = new GHPoint3D(1, 2.1, 0, 0);
+        point2 = new GHPoint3D(1, 2.1, 0, 0);
         assertEquals(point1, point2);
     }
 }
