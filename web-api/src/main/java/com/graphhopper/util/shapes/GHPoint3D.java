@@ -19,6 +19,8 @@ package com.graphhopper.util.shapes;
 
 import com.graphhopper.util.NumHelper;
 
+import java.util.Date;
+
 /**
  * @author Peter Karich
  */
@@ -30,8 +32,8 @@ public class GHPoint3D extends GHPoint {
         this.ele = elevation;
     }
 
-    public GHPoint3D(double lat, double lon, double elevation, double accuracy) {
-        super(lat, lon, accuracy);
+    public GHPoint3D(double lat, double lon, double elevation, double accuracy, int index, Date timestamp) {
+        super(lat, lon, accuracy, index, timestamp);
         this.ele = elevation;
     }
 
@@ -51,8 +53,7 @@ public class GHPoint3D extends GHPoint {
         if (obj == null)
             return false;
 
-        @SuppressWarnings("unchecked")
-        final GHPoint3D other = (GHPoint3D) obj;
+        @SuppressWarnings("unchecked") final GHPoint3D other = (GHPoint3D) obj;
         if (Double.isNaN(ele) || Double.isNaN(accuracy))
             // very special case necessary in QueryGraph, asserted via test
             return NumHelper.equalsEps(lat, other.lat) && NumHelper.equalsEps(lon, other.lon);
@@ -63,7 +64,7 @@ public class GHPoint3D extends GHPoint {
 
     @Override
     public String toString() {
-        return super.toString() + "," + ele + "," + accuracy;
+        return super.toString() + "," + ele + "," + accuracy + ',' + index + ',' + timestamp;
     }
 
     @Override

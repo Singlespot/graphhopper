@@ -31,8 +31,10 @@ import com.graphhopper.jackson.Gpx;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.jackson.ResponsePathSerializer;
 import com.graphhopper.matching.*;
+import com.graphhopper.search.EdgeKVStorage;
 import com.graphhopper.storage.index.LocationIndexTree;
 import com.graphhopper.util.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,6 +185,19 @@ public class MapMatchingResource {
                     }
                     map.putPOJO("traversal_keys", traversalKeylist);
                 }
+                List<Object> observationIndexes = new ArrayList<>();
+                //TODO finish [original_point_idx, snapped_point_index]
+                for (EdgeMatch em : matchResult.getEdgeMatches()) {
+                    int index = 0;
+                    int edgeKey = -1;
+                    if (em.getStates().size() > 0) {
+                        index = em.getStates().get(0).getEntry().getPoint().index;
+                        edgeKey = em.getStates().get(0).getSnap().getClosestEdge().getEdgeKey();
+                        // TODO put the index and edgeKey in better data structure
+                        observationIndexes.add(new ArrayList<Integer>(Arrays.asList(index, edgeKey)));
+                    }
+                }
+                map.putPOJO("observation_indexes", observationIndexes);
                 return Response.ok(map).
                         header("X-GH-Took", "" + Math.round(sw.getMillisDouble())).
                         build();
