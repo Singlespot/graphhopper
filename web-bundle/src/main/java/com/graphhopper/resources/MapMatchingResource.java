@@ -187,15 +187,14 @@ public class MapMatchingResource {
                 }
                 List<Object> observationIndexes = new ArrayList<>();
                 //TODO finish [original_point_idx, snapped_point_index]
+                int lastPointIndex = -1;
                 for (EdgeMatch em : matchResult.getEdgeMatches()) {
-                    int index = 0;
-                    int edgeKey = -1;
                     if (em.getStates().size() > 0) {
-                        index = em.getStates().get(0).getEntry().getPoint().index;
-                        edgeKey = em.getStates().get(0).getSnap().getClosestEdge().getEdgeKey();
+                        int index = em.getStates().get(0).getEntry().getPoint().index;
                         // TODO put the index and edgeKey in better data structure
-                        observationIndexes.add(new ArrayList<Integer>(Arrays.asList(index, edgeKey)));
+                        observationIndexes.add(new ArrayList<Integer>(Arrays.asList(index, lastPointIndex + 1)));
                     }
+                    lastPointIndex += em.getEdgeState().fetchWayGeometry(FetchMode.PILLAR_AND_ADJ).size();
                 }
                 map.putPOJO("observation_indexes", observationIndexes);
                 return Response.ok(map).
