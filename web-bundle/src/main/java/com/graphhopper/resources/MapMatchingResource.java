@@ -31,10 +31,10 @@ import com.graphhopper.jackson.Gpx;
 import com.graphhopper.jackson.Jackson;
 import com.graphhopper.jackson.ResponsePathSerializer;
 import com.graphhopper.matching.*;
-import com.graphhopper.search.EdgeKVStorage;
 import com.graphhopper.storage.index.LocationIndexTree;
 import com.graphhopper.util.*;
-import org.apache.commons.lang3.tuple.Pair;
+import com.graphhopper.util.shapes.GHPoint;
+import com.graphhopper.util.shapes.GHPoint3D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -185,18 +185,35 @@ public class MapMatchingResource {
                     }
                     map.putPOJO("traversal_keys", traversalKeylist);
                 }
-                List<Object> observationIndexes = new ArrayList<>();
-                //TODO finish [original_point_idx, snapped_point_index]
-                int lastPointIndex = -1;
-                for (EdgeMatch em : matchResult.getEdgeMatches()) {
-                    if (em.getStates().size() > 0) {
-                        int index = em.getStates().get(0).getEntry().getPoint().index;
-                        // TODO put the index and edgeKey in better data structure
-                        observationIndexes.add(new ArrayList<Integer>(Arrays.asList(index, lastPointIndex + 1)));
+                if (responsePath.getPathDetails().get("edge_key") != null) {
+                    List<Object> observationIndexes = new ArrayList<>();
+                    //TODO finish [original_point_idx, snapped_point_index]
+                    int i = 0;
+                    assert matchResult.getEdgeMatches().size() == responsePath.getPathDetails().get("edge_key").size();
+                    for (EdgeMatch em : matchResult.getEdgeMatches()) {
+                        DistanceCalc distanceCalc = new DistancePlaneProjection();
+                        if (em.getStates().size() > 0) {
+                            GHPoint point = em.getStates().get(0).getEntry().getPoint();
+                            int snappedEdgeStartPointIdx = responsePath.getPathDetails().get("edge_key").get(i).getFirst();
+                            GHPoint3D snappedEdgeStartPoint = responsePath.getPoints().get(snappedEdgeStartPointIdx);
+                            int snappedEdgeLastPointIdx = responsePath.getPathDetails().get("edge_key").get(i).getLast();
+                            GHPoint3D snappedEdgeLastPoint = responsePath.getPoints().get(snappedEdgeLastPointIdx);
+                            double distanceToStart = distanceCalc.calcDist(
+                                    point.getLat(), point.getLon(),
+                                    snappedEdgeStartPoint.getLat(), snappedEdgeStartPoint.getLon()
+                            );
+                            double distanceToLast = distanceCalc.calcDist(
+                                    point.getLat(), point.getLon(),
+                                    snappedEdgeLastPoint.getLat(), snappedEdgeLastPoint.getLon()
+                            );
+                            int snappedPointIndex = distanceToStart < distanceToLast ? snappedEdgeStartPointIdx : snappedEdgeLastPointIdx;
+                            // TODO put the index and edgeKey in better data structure
+                            observationIndexes.add(new ArrayList<Integer>(Arrays.asList(point.index, snappedPointIndex)));
+                        }
+                        i++;
                     }
-                    lastPointIndex += em.getEdgeState().fetchWayGeometry(FetchMode.PILLAR_AND_ADJ).size();
+                    map.putPOJO("observation_indexes", observationIndexes);
                 }
-                map.putPOJO("observation_indexes", observationIndexes);
                 return Response.ok(map).
                         header("X-GH-Took", "" + Math.round(sw.getMillisDouble())).
                         build();
