@@ -194,21 +194,32 @@ public class MapMatchingResource {
                         DistanceCalc distanceCalc = new DistancePlaneProjection();
                         if (em.getStates().size() > 0) {
                             GHPoint point = em.getStates().get(0).getEntry().getPoint();
+                            GHPoint3D snappedPoint = em.getStates().get(0).getSnap().getSnappedPoint();
                             int snappedEdgeStartPointIdx = responsePath.getPathDetails().get("edge_key").get(i).getFirst();
                             GHPoint3D snappedEdgeStartPoint = responsePath.getPoints().get(snappedEdgeStartPointIdx);
                             int snappedEdgeLastPointIdx = responsePath.getPathDetails().get("edge_key").get(i).getLast();
-                            GHPoint3D snappedEdgeLastPoint = responsePath.getPoints().get(snappedEdgeLastPointIdx);
                             double distanceToStart = distanceCalc.calcDist(
-                                    point.getLat(), point.getLon(),
+                                    snappedPoint.getLat(), snappedPoint.getLon(),
                                     snappedEdgeStartPoint.getLat(), snappedEdgeStartPoint.getLon()
                             );
-                            double distanceToLast = distanceCalc.calcDist(
-                                    point.getLat(), point.getLon(),
-                                    snappedEdgeLastPoint.getLat(), snappedEdgeLastPoint.getLon()
-                            );
-                            int snappedPointIndex = distanceToStart < distanceToLast ? snappedEdgeStartPointIdx : snappedEdgeLastPointIdx;
+                            double minDistance = distanceToStart;
+                            int bestCandidateIdx = snappedEdgeStartPointIdx;
+                            for (int j = snappedEdgeStartPointIdx + 1; j <= snappedEdgeLastPointIdx; j++) {
+                                GHPoint3D candidate = responsePath.getPoints().get(j);
+                                double distance = distanceCalc.calcDist(
+                                        snappedPoint.getLat(), snappedPoint.getLon(), candidate.getLat(), candidate.getLon());
+                                if (distance < minDistance) {
+                                    bestCandidateIdx = j;
+                                    minDistance = distance;
+                                } else break;
+                            }
+//                            GHPoint3D snappedEdgeLastPoint = responsePath.getPoints().get(snappedEdgeLastPointIdx);
+//                            double distanceToLast = distanceCalc.calcDist(
+//                                    point.getLat(), point.getLon(),
+//                                    snappedEdgeLastPoint.getLat(), snappedEdgeLastPoint.getLon()
+//                            );
                             // TODO put the index and edgeKey in better data structure
-                            observationIndexes.add(new ArrayList<Integer>(Arrays.asList(point.index, snappedPointIndex)));
+                            observationIndexes.add(new ArrayList<Integer>(Arrays.asList(point.index, bestCandidateIdx)));
                         }
                         i++;
                     }
