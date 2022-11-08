@@ -187,7 +187,6 @@ public class MapMatchingResource {
                 }
                 if (responsePath.getPathDetails().get("edge_key") != null) {
                     List<Object> observationIndexes = new ArrayList<>();
-                    //TODO finish [original_point_idx, snapped_point_index]
                     int i = 0;
                     assert matchResult.getEdgeMatches().size() == responsePath.getPathDetails().get("edge_key").size();
                     for (EdgeMatch em : matchResult.getEdgeMatches()) {

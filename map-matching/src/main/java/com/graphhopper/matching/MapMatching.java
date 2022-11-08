@@ -431,11 +431,10 @@ public class MapMatching {
         }
         ArrayList<SequenceState<State, Observation, Path>> result = new ArrayList<>();
         if (qe != null && qe.timeStep < timeSteps.size() - 1) {
-            throw new IllegalArgumentException("Sequence is broken for submitted track at time step "
-                    + qe.timeStep + ". "
+            throw new IllegalArgumentException("Sequence is broken for submitted track at index "
+                    + qe.state.getEntry().getPoint().index + ". "
                     + "observation:" + qe.state.getEntry() + ", "
-                    + timeSteps.get(qe.timeStep).candidates.size() + " candidates: "
-                    + timeSteps.get(qe.timeStep).candidates
+                    + "next step is " + timeSteps.get(qe.timeStep + 1).observation.getPoint().index
                     + ". If a match is expected consider increasing max_visited_nodes.");
         }
         while (qe != null) {
