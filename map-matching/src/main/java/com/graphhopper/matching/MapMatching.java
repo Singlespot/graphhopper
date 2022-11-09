@@ -434,7 +434,7 @@ public class MapMatching {
             throw new IllegalArgumentException("Sequence is broken for submitted track at index "
                     + qe.state.getEntry().getPoint().index + ". "
                     + "observation:" + qe.state.getEntry() + ", "
-                    + "next step is " + timeSteps.get(qe.timeStep + 1).observation.getPoint().index
+                    + "next index is " + timeSteps.get(qe.timeStep + 1).observation.getPoint().index
                     + ". If a match is expected consider increasing max_visited_nodes.");
         }
         while (qe != null) {
