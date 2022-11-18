@@ -20,7 +20,6 @@ package com.graphhopper.matching;
 import com.carrotsearch.hppc.IntHashSet;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.config.Profile;
-import com.graphhopper.jackson.ResponsePathSerializer;
 import com.graphhopper.routing.AStarBidirection;
 import com.graphhopper.routing.DijkstraBidirectionRef;
 import com.graphhopper.routing.Path;
@@ -378,6 +377,8 @@ public class MapMatching {
         final HmmProbabilities probabilities = new HmmProbabilities(measurementErrorSigma, transitionProbabilityBeta);
         final Map<State, Label> labels = new HashMap<>();
         Map<Transition<State>, Path> roadPaths = new HashMap<>();
+        Label maxTimeStep = new Label();
+        maxTimeStep.timeStep = -1;
 
         PriorityQueue<Label> q = new PriorityQueue<>(Comparator.comparing(qe -> qe.minusLogProbability));
         for (State candidate : timeSteps.get(0).candidates) {
@@ -394,6 +395,8 @@ public class MapMatching {
             qe = q.poll();
             if (qe.isDeleted)
                 continue;
+            if (maxTimeStep.timeStep < qe.timeStep)
+                maxTimeStep = qe;
             if (qe.timeStep == timeSteps.size() - 1)
                 break;
             State from = qe.state;
@@ -430,11 +433,14 @@ public class MapMatching {
             }
         }
         ArrayList<SequenceState<State, Observation, Path>> result = new ArrayList<>();
-        if (qe != null && qe.timeStep < timeSteps.size() - 1) {
+        if (qe == null) {
+            throw new IllegalArgumentException("Sequence is broken for submitted track at initial time step.");
+        }
+        if (qe.timeStep < timeSteps.size() - 1) {
             throw new IllegalArgumentException("Sequence is broken for submitted track at index "
-                    + qe.state.getEntry().getPoint().index + ". "
-                    + "observation:" + qe.state.getEntry() + ", "
-                    + "next index is " + timeSteps.get(qe.timeStep + 1).observation.getPoint().index
+                    + maxTimeStep.state.getEntry().getPoint().index + ". "
+                    + "observation:" + maxTimeStep.state.getEntry() + ", "
+                    + "next index is " + timeSteps.get(maxTimeStep.timeStep + 1).observation.getPoint().index
                     + ". If a match is expected consider increasing max_visited_nodes.");
         }
         while (qe != null) {
