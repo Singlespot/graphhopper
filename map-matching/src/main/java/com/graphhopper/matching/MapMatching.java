@@ -20,6 +20,7 @@ package com.graphhopper.matching;
 import com.carrotsearch.hppc.IntHashSet;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.config.Profile;
+import com.graphhopper.jackson.ResponsePathSerializer;
 import com.graphhopper.routing.AStarBidirection;
 import com.graphhopper.routing.DijkstraBidirectionRef;
 import com.graphhopper.routing.Path;
@@ -199,7 +200,7 @@ public class MapMatching {
 
         // Snap observations to links. Generates multiple candidate snaps per observation.
         List<Collection<Snap>> snapsPerObservation = filteredObservations.stream()
-                .map(o -> findCandidateSnaps(o.getPoint().lat, o.getPoint().lon))
+                .map(o -> findCandidateSnaps(o.getPoint().lat, o.getPoint().lon, o.getPoint().accuracy))
                 .collect(Collectors.toList());
         statistics.put("snapsPerObservation", snapsPerObservation.stream().mapToInt(Collection::size).toArray());
 
@@ -269,9 +270,10 @@ public class MapMatching {
         return filtered;
     }
 
-    public List<Snap> findCandidateSnaps(final double queryLat, final double queryLon) {
-        double rLon = (measurementErrorSigma * 360.0 / DistanceCalcEarth.DIST_EARTH.calcCircumference(queryLat));
-        double rLat = measurementErrorSigma / DistanceCalcEarth.METERS_PER_DEGREE;
+    public List<Snap> findCandidateSnaps(final double queryLat, final double queryLon, final double queryMeasurementErrorSigma) {
+        double errorSigma = Double.isNaN(queryMeasurementErrorSigma) ? measurementErrorSigma : queryMeasurementErrorSigma;
+        double rLon = (errorSigma * 360.0 / DistanceCalcEarth.DIST_EARTH.calcCircumference(queryLat));
+        double rLat = errorSigma / DistanceCalcEarth.METERS_PER_DEGREE;
         Envelope envelope = new Envelope(queryLon, queryLon, queryLat, queryLat);
         for (int i = 0; i < 50; i++) {
             envelope.expandBy(rLon, rLat);
@@ -376,6 +378,8 @@ public class MapMatching {
         final HmmProbabilities probabilities = new HmmProbabilities(measurementErrorSigma, transitionProbabilityBeta);
         final Map<State, Label> labels = new HashMap<>();
         Map<Transition<State>, Path> roadPaths = new HashMap<>();
+        Label maxTimeStep = new Label();
+        maxTimeStep.timeStep = -1;
 
         PriorityQueue<Label> q = new PriorityQueue<>(Comparator.comparing(qe -> qe.minusLogProbability));
         for (State candidate : timeSteps.get(0).candidates) {
@@ -392,6 +396,8 @@ public class MapMatching {
             qe = q.poll();
             if (qe.isDeleted)
                 continue;
+            if (maxTimeStep.timeStep < qe.timeStep)
+                maxTimeStep = qe;
             if (qe.timeStep == timeSteps.size() - 1)
                 break;
             State from = qe.state;
@@ -428,6 +434,16 @@ public class MapMatching {
             }
         }
         ArrayList<SequenceState<State, Observation, Path>> result = new ArrayList<>();
+        if (qe == null) {
+            throw new IllegalArgumentException("Sequence is broken for submitted track at initial time step.");
+        }
+        if (qe.timeStep < timeSteps.size() - 1) {
+            throw new IllegalArgumentException("Sequence is broken for submitted track at index "
+                    + maxTimeStep.state.getEntry().getPoint().index + ". "
+                    + "observation:" + maxTimeStep.state.getEntry() + ", "
+                    + "next index is " + timeSteps.get(maxTimeStep.timeStep + 1).observation.getPoint().index
+                    + ". If a match is expected consider increasing max_visited_nodes.");
+        }
         while (qe != null) {
             final SequenceState<State, Observation, Path> ss = new SequenceState<>(qe.state, qe.state.getEntry(), qe.back == null ? null : roadPaths.get(new Transition<>(qe.back.state, qe.state)));
             result.add(ss);
