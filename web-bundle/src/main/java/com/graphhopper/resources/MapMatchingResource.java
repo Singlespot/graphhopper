@@ -130,7 +130,7 @@ public class MapMatchingResource {
         matching.setMeasurementErrorSigma(gpsAccuracy);
 
         List<Observation> measurements = GpxConversions.getEntries(gpx.trk.get(0));
-        MatchResult matchResult = matching.match(measurements);
+        MatchResult matchResult = matching.match(measurements, sw);
 
         sw.stop();
         logger.info(objectMapper.createObjectNode()
