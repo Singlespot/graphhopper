@@ -120,7 +120,7 @@ public class MatchCommand extends ConfiguredCommand<GraphHopperServerConfigurati
                 List<Observation> measurements = GpxConversions.getEntries(gpx.trk.get(0));
                 importSW.stop();
                 matchSW.start();
-                MatchResult mr = mapMatching.match(measurements);
+                MatchResult mr = mapMatching.match(measurements, matchSW);
                 matchSW.stop();
                 System.out.println(gpxFile);
                 System.out.println("\tmatches:\t" + mr.getEdgeMatches().size() + ", gps entries:" + measurements.size());
