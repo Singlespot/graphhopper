@@ -391,7 +391,7 @@ public class MapMatching {
             labels.put(candidate, label);
         }
         Label qe = null;
-        while (!q.isEmpty() && sw.getNanos() < 2 * 60 * 1e9) {
+        while (!q.isEmpty() && sw.getCurrentSeconds() < 2 * 60) {
             qe = q.poll();
             if (qe.isDeleted)
                 continue;
@@ -437,7 +437,7 @@ public class MapMatching {
             throw new IllegalArgumentException("Sequence is broken for submitted track at initial time step.");
         }
         if (qe.timeStep < timeSteps.size() - 1) {
-            if (sw.getNanos() >= 2 * 60 * 1e9) {
+            if (sw.getCurrentSeconds() >= 2 * 60) {
                 throw new IllegalArgumentException("Time limit reached");
             } else
                 throw new IllegalArgumentException("Sequence is broken for submitted track at index "
