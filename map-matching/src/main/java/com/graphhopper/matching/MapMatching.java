@@ -437,11 +437,14 @@ public class MapMatching {
             throw new IllegalArgumentException("Sequence is broken for submitted track at initial time step.");
         }
         if (qe.timeStep < timeSteps.size() - 1) {
-            throw new IllegalArgumentException("Sequence is broken for submitted track at index "
-                    + maxTimeStep.state.getEntry().getPoint().index + ". "
-                    + "observation:" + maxTimeStep.state.getEntry() + ", "
-                    + "next index is " + timeSteps.get(maxTimeStep.timeStep + 1).observation.getPoint().index
-                    + ". If a match is expected consider increasing max_visited_nodes.");
+            if (sw.getNanos() >= 2 * 60 * 1e9) {
+                throw new IllegalArgumentException("Time limit reached");
+            } else
+                throw new IllegalArgumentException("Sequence is broken for submitted track at index "
+                        + maxTimeStep.state.getEntry().getPoint().index + ". "
+                        + "observation:" + maxTimeStep.state.getEntry() + ", "
+                        + "next index is " + timeSteps.get(maxTimeStep.timeStep + 1).observation.getPoint().index
+                        + ". If a match is expected consider increasing max_visited_nodes.");
         }
         while (qe != null) {
             final SequenceState<State, Observation, Path> ss = new SequenceState<>(qe.state, qe.state.getEntry(), qe.back == null ? null : roadPaths.get(new Transition<>(qe.back.state, qe.state)));
