@@ -72,6 +72,7 @@ public class MapMatching {
     private double transitionProbabilityBeta = 2.0;
     private final DistanceCalc distanceCalc = new DistancePlaneProjection();
     private QueryGraph queryGraph;
+    private int maxProcessingTimeSeconds = 120;
 
     private Map<String, Object> statistics = new HashMap<>();
 
@@ -191,6 +192,13 @@ public class MapMatching {
      */
     public void setMeasurementErrorSigma(double measurementErrorSigma) {
         this.measurementErrorSigma = measurementErrorSigma;
+    }
+
+    /**
+     * Maximum time in seconds to spend on map matching one GPX file.
+     */
+    public void setMaxProcessingTimeSeconds(int maxProcessingTimeSeconds) {
+        this.maxProcessingTimeSeconds = maxProcessingTimeSeconds;
     }
 
     public MatchResult match(List<Observation> observations, StopWatch sw) {
@@ -391,7 +399,7 @@ public class MapMatching {
             labels.put(candidate, label);
         }
         Label qe = null;
-        while (!q.isEmpty() && sw.getCurrentSeconds() < 2 * 60) {
+        while (!q.isEmpty() && sw.getCurrentSeconds() < maxProcessingTimeSeconds) {
             qe = q.poll();
             if (qe.isDeleted)
                 continue;
@@ -437,8 +445,8 @@ public class MapMatching {
             throw new IllegalArgumentException("Sequence is broken for submitted track at initial time step.");
         }
         if (qe.timeStep < timeSteps.size() - 1) {
-            if (sw.getCurrentSeconds() >= 2 * 60) {
-                throw new IllegalArgumentException("Time limit reached");
+            if (sw.getCurrentSeconds() >= maxProcessingTimeSeconds) {
+                throw new IllegalArgumentException("Time limit of " + maxProcessingTimeSeconds + "s exceeded.");
             } else
                 throw new IllegalArgumentException("Sequence is broken for submitted track at index "
                         + maxTimeStep.state.getEntry().getPoint().index + ". "

@@ -75,6 +75,10 @@ public class MatchCommand extends ConfiguredCommand<GraphHopperServerConfigurati
                 .type(Double.class)
                 .required(false)
                 .setDefault(2.0);
+        subparser.addArgument("--max_processing_time_seconds")
+                .type(Integer.class)
+                .required(false)
+                .setDefault(120);
     }
 
     @Override
@@ -99,6 +103,7 @@ public class MatchCommand extends ConfiguredCommand<GraphHopperServerConfigurati
         MapMatching mapMatching = MapMatching.fromGraphHopper(hopper, hints);
         mapMatching.setTransitionProbabilityBeta(args.getDouble("transition_probability_beta"));
         mapMatching.setMeasurementErrorSigma(args.getInt("gps_accuracy"));
+        mapMatching.setMaxProcessingTimeSeconds(args.getInt("max_processing_time_seconds"));
 
         StopWatch importSW = new StopWatch();
         StopWatch matchSW = new StopWatch();
