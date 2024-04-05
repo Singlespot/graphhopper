@@ -17,6 +17,7 @@
  */
 package com.graphhopper.application;
 
+import com.codahale.metrics.MetricRegistry;
 import com.graphhopper.application.cli.ImportCommand;
 import com.graphhopper.application.cli.MatchCommand;
 import com.graphhopper.application.resources.RootResource;
@@ -28,6 +29,9 @@ import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+import io.prometheus.client.CollectorRegistry;
+import io.prometheus.client.dropwizard.DropwizardExports;
+import io.prometheus.client.exporter.MetricsServlet;
 
 import javax.servlet.DispatcherType;
 import java.util.EnumSet;
@@ -54,5 +58,9 @@ public final class GraphHopperApplication extends Application<GraphHopperServerC
         environment.jersey().register(new RootResource());
         environment.jersey().register(NavigateResource.class);
         environment.servlets().addFilter("cors", CORSFilter.class).addMappingForUrlPatterns(EnumSet.allOf(DispatcherType.class), false, "*");
+//      register prometheus metrics to new metrics_prometheus endpoint
+        CollectorRegistry collectorRegistry = new CollectorRegistry();
+        collectorRegistry.register(new DropwizardExports(environment.metrics()));
+        environment.admin().addServlet("metrics_prometheus", new MetricsServlet(collectorRegistry)).addMapping("/metrics_prometheus");
     }
 }

@@ -20,7 +20,6 @@ package com.graphhopper.matching;
 import com.carrotsearch.hppc.IntHashSet;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.config.Profile;
-import com.graphhopper.jackson.ResponsePathSerializer;
 import com.graphhopper.routing.AStarBidirection;
 import com.graphhopper.routing.DijkstraBidirectionRef;
 import com.graphhopper.routing.Path;
@@ -73,6 +72,7 @@ public class MapMatching {
     private double transitionProbabilityBeta = 2.0;
     private final DistanceCalc distanceCalc = new DistancePlaneProjection();
     private QueryGraph queryGraph;
+    private int maxProcessingTimeSeconds = 120;
 
     private Map<String, Object> statistics = new HashMap<>();
 
@@ -131,7 +131,7 @@ public class MapMatching {
 
             @Override
             public List<Path> calcPaths(QueryGraph queryGraph, int fromNode, int fromOutEdge, int[] toNodes, int[] toInEdges) {
-                assert(toNodes.length == toInEdges.length);
+                assert (toNodes.length == toInEdges.length);
                 List<Path> result = new ArrayList<>();
                 for (int i = 0; i < toNodes.length; i++) {
                     result.add(calcOnePath(queryGraph, fromNode, toNodes[i], fromOutEdge, toInEdges[i]));
@@ -194,7 +194,14 @@ public class MapMatching {
         this.measurementErrorSigma = measurementErrorSigma;
     }
 
-    public MatchResult match(List<Observation> observations) {
+    /**
+     * Maximum time in seconds to spend on map matching one GPX file.
+     */
+    public void setMaxProcessingTimeSeconds(int maxProcessingTimeSeconds) {
+        this.maxProcessingTimeSeconds = maxProcessingTimeSeconds;
+    }
+
+    public MatchResult match(List<Observation> observations, StopWatch sw) {
         List<Observation> filteredObservations = filterObservations(observations);
         statistics.put("filteredObservations", filteredObservations.size());
 
@@ -213,7 +220,7 @@ public class MapMatching {
         List<ObservationWithCandidateStates> timeSteps = createTimeSteps(filteredObservations, snapsPerObservation);
 
         // Compute the most likely sequence of map matching candidates:
-        List<SequenceState<State, Observation, Path>> seq = computeViterbiSequence(timeSteps);
+        List<SequenceState<State, Observation, Path>> seq = computeViterbiSequence(timeSteps, sw);
         statistics.put("transitionDistances", seq.stream().filter(s -> s.transitionDescriptor != null).mapToLong(s -> Math.round(s.transitionDescriptor.getDistance())).toArray());
 
         List<EdgeIteratorState> path = seq.stream().filter(s1 -> s1.transitionDescriptor != null).flatMap(s1 -> s1.transitionDescriptor.calcEdges().stream()).collect(Collectors.toList());
@@ -374,7 +381,7 @@ public class MapMatching {
         double minusLogProbability;
     }
 
-    private List<SequenceState<State, Observation, Path>> computeViterbiSequence(List<ObservationWithCandidateStates> timeSteps) {
+    private List<SequenceState<State, Observation, Path>> computeViterbiSequence(List<ObservationWithCandidateStates> timeSteps, StopWatch sw) {
         final HmmProbabilities probabilities = new HmmProbabilities(measurementErrorSigma, transitionProbabilityBeta);
         final Map<State, Label> labels = new HashMap<>();
         Map<Transition<State>, Path> roadPaths = new HashMap<>();
@@ -392,7 +399,7 @@ public class MapMatching {
             labels.put(candidate, label);
         }
         Label qe = null;
-        while (!q.isEmpty()) {
+        while (!q.isEmpty() && sw.getCurrentSeconds() < maxProcessingTimeSeconds) {
             qe = q.poll();
             if (qe.isDeleted)
                 continue;
@@ -438,11 +445,14 @@ public class MapMatching {
             throw new IllegalArgumentException("Sequence is broken for submitted track at initial time step.");
         }
         if (qe.timeStep < timeSteps.size() - 1) {
-            throw new IllegalArgumentException("Sequence is broken for submitted track at index "
-                    + maxTimeStep.state.getEntry().getPoint().index + ". "
-                    + "observation:" + maxTimeStep.state.getEntry() + ", "
-                    + "next index is " + timeSteps.get(maxTimeStep.timeStep + 1).observation.getPoint().index
-                    + ". If a match is expected consider increasing max_visited_nodes.");
+            if (sw.getCurrentSeconds() >= maxProcessingTimeSeconds) {
+                throw new IllegalArgumentException("Time limit of " + maxProcessingTimeSeconds + "s exceeded.");
+            } else
+                throw new IllegalArgumentException("Sequence is broken for submitted track at index "
+                        + maxTimeStep.state.getEntry().getPoint().index + ". "
+                        + "observation:" + maxTimeStep.state.getEntry() + ", "
+                        + "next index is " + timeSteps.get(maxTimeStep.timeStep + 1).observation.getPoint().index
+                        + ". If a match is expected consider increasing max_visited_nodes.");
         }
         while (qe != null) {
             final SequenceState<State, Observation, Path> ss = new SequenceState<>(qe.state, qe.state.getEntry(), qe.back == null ? null : roadPaths.get(new Transition<>(qe.back.state, qe.state)));

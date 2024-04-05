@@ -97,7 +97,8 @@ public class MapMatchingResource {
             @QueryParam("gpx.track") @DefaultValue("true") boolean withTrack,
             @QueryParam("traversal_keys") @DefaultValue("false") boolean enableTraversalKeys,
             @QueryParam("gps_accuracy") @DefaultValue("40") double gpsAccuracy,
-            @QueryParam(MAX_VISITED_NODES) @DefaultValue("3000") int maxVisitedNodes) {
+            @QueryParam(MAX_VISITED_NODES) @DefaultValue("3000") int maxVisitedNodes,
+            @QueryParam("max_processing_time") @DefaultValue("120") int maxProcessingTimeSeconds) {
 
         boolean writeGPX = "gpx".equalsIgnoreCase(outType);
         if (gpx.trk.isEmpty()) {
@@ -128,9 +129,10 @@ public class MapMatchingResource {
 
         MapMatching matching = new MapMatching(graphHopper.getBaseGraph(), (LocationIndexTree) graphHopper.getLocationIndex(), mapMatchingRouterFactory.createMapMatchingRouter(hints));
         matching.setMeasurementErrorSigma(gpsAccuracy);
+        matching.setMaxProcessingTimeSeconds(maxProcessingTimeSeconds);
 
         List<Observation> measurements = GpxConversions.getEntries(gpx.trk.get(0));
-        MatchResult matchResult = matching.match(measurements);
+        MatchResult matchResult = matching.match(measurements, sw);
 
         sw.stop();
         logger.info(objectMapper.createObjectNode()
@@ -192,7 +194,7 @@ public class MapMatchingResource {
                     for (EdgeMatch em : matchResult.getEdgeMatches()) {
                         DistanceCalc distanceCalc = new DistancePlaneProjection();
                         if (em.getStates().size() > 0) {
-                            for (State state: em.getStates()) {
+                            for (State state : em.getStates()) {
                                 GHPoint point = state.getEntry().getPoint();
                                 GHPoint3D snappedPoint = state.getSnap().getSnappedPoint();
                                 int snappedEdgeStartPointIdx = responsePath.getPathDetails().get("edge_key").get(i).getFirst();

@@ -84,10 +84,10 @@ public class MapMatchingTest {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext context) {
             return Stream.of(
-                    new PMap().putObject(Parameters.Landmark.DISABLE, true),
-                    new PMap().putObject(Parameters.Landmark.DISABLE, false)
+                            new PMap().putObject(Parameters.Landmark.DISABLE, true),
+                            new PMap().putObject(Parameters.Landmark.DISABLE, false)
 
-            )
+                    )
                     .map(hints -> hints.putObject("profile", "my_profile"))
                     .map(Arguments::of);
         }
@@ -105,8 +105,9 @@ public class MapMatchingTest {
                 new GHPoint(51.358594, 12.360032))
                 .setProfile("my_profile")).getBest();
         List<Observation> inputGPXEntries = createRandomGPXEntriesAlongRoute(route2);
-        MatchResult mr = mapMatching.match(inputGPXEntries);
-
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(inputGPXEntries, sw);
+        sw.stop();
         // make sure no virtual edges are returned
         int edgeCount = graphHopper.getBaseGraph().getAllEdges().length();
         for (EdgeMatch em : mr.getEdgeMatches()) {
@@ -124,8 +125,9 @@ public class MapMatchingTest {
                 .setProfile("my_profile")).getBest();
         inputGPXEntries = createRandomGPXEntriesAlongRoute(route1);
         mapMatching.setMeasurementErrorSigma(5);
-        mr = mapMatching.match(inputGPXEntries);
-
+        sw = new StopWatch().start();
+        mr = mapMatching.match(inputGPXEntries, sw);
+        sw.stop();
         assertEquals(Arrays.asList("Windmühlenstraße", "Bayrischer Platz"), fetchStreets(mr.getEdgeMatches()));
         assertEquals(mr.getGpxEntriesLength(), mr.getMatchLength(), .1);
 
@@ -136,8 +138,9 @@ public class MapMatchingTest {
         inputGPXEntries = createRandomGPXEntriesAlongRoute(route);
         mapMatching = MapMatching.fromGraphHopper(graphHopper, hints);
         mapMatching.setMeasurementErrorSigma(20);
-        mr = mapMatching.match(inputGPXEntries);
-
+        sw = new StopWatch().start();
+        mr = mapMatching.match(inputGPXEntries, sw);
+        sw.stop();
         assertEquals(route.getDistance(), mr.getMatchLength(), 0.5);
         // GraphHopper travel times aren't exactly additive
         assertThat(Math.abs(route.getTime() - mr.getMatchMillis()), is(lessThan(1000L)));
@@ -153,8 +156,9 @@ public class MapMatchingTest {
                 new GHPoint(51.45, 12.59))
                 .setProfile("my_profile")).getBest();
         List<Observation> inputGPXEntries = createRandomGPXEntriesAlongRoute(route);
-        MatchResult mr = mapMatching.match(inputGPXEntries);
-
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(inputGPXEntries, sw);
+        sw.stop();
         assertEquals(route.getDistance(), mr.getMatchLength(), 2);
         // GraphHopper travel times aren't exactly additive
         assertThat(Math.abs(route.getTime() - mr.getMatchMillis()), is(lessThan(1000L)));
@@ -167,7 +171,9 @@ public class MapMatchingTest {
         List<Observation> inputGPXEntries = Arrays.asList(
                 new Observation(new GHPoint(51.23, 12.18)),
                 new Observation(new GHPoint(51.45, 12.59)));
-        MatchResult mr = mapMatching.match(inputGPXEntries);
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(inputGPXEntries, sw);
+        sw.stop();
         assertEquals(57553.0, mr.getMatchLength(), 1.0);
     }
 
@@ -180,7 +186,9 @@ public class MapMatchingTest {
                 new GHPoint(51.342328, 12.3613358))
                 .setProfile("my_profile")).getBest();
         List<Observation> inputGPXEntries = createRandomGPXEntriesAlongRoute(route);
-        MatchResult mr = mapMatching.match(inputGPXEntries);
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(inputGPXEntries, sw);
+        sw.stop();
 
         assertFalse(mr.getEdgeMatches().isEmpty());
         assertEquals(3, mr.getMatchLength(), 1);
@@ -194,7 +202,9 @@ public class MapMatchingTest {
         Gpx gpx = xmlMapper.readValue(getClass().getResourceAsStream("/tour3-with-long-edge.gpx"), Gpx.class);
         MapMatching mapMatching = MapMatching.fromGraphHopper(graphHopper, hints);
         mapMatching.setMeasurementErrorSigma(20);
-        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)));
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)), sw);
+        sw.stop();
         assertEquals(Arrays.asList("Marbachstraße", "Weinligstraße", "Fechnerstraße"), fetchStreets(mr.getEdgeMatches()));
         assertEquals(mr.getGpxEntriesLength(), mr.getMatchLength(), 11); // TODO: this should be around 300m according to Google ... need to check
     }
@@ -247,7 +257,9 @@ public class MapMatchingTest {
         mapMatching.setMeasurementErrorSigma(40);
 
         Gpx gpx = xmlMapper.readValue(getClass().getResourceAsStream("/tour2-with-loop.gpx"), Gpx.class);
-        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)));
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)), sw);
+        sw.stop();
         assertEquals(
                 Arrays.asList("Gustav-Adolf-Straße", "Leibnizstraße", "Hinrichsenstraße", "Tschaikowskistraße"),
                 fetchStreets(mr.getEdgeMatches()));
@@ -265,7 +277,9 @@ public class MapMatchingTest {
         // TODO smaller sigma like 40m leads to U-turn at Tschaikowskistraße
         mapMatching.setMeasurementErrorSigma(50);
         Gpx gpx = xmlMapper.readValue(getClass().getResourceAsStream("/tour-with-loop.gpx"), Gpx.class);
-        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)));
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)), sw);
+        sw.stop();
         assertEquals(Arrays.asList("Jahnallee", "Funkenburgstraße",
                 "Gustav-Adolf-Straße", "Tschaikowskistraße", "Jahnallee",
                 "Lessingstraße"), fetchStreets(mr.getEdgeMatches()));
@@ -289,12 +303,15 @@ public class MapMatchingTest {
 
         // with large measurement error, we expect no U-turn
         mapMatching.setMeasurementErrorSigma(50);
-        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)));
+        StopWatch sw = new StopWatch().start();
+        MatchResult mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)), sw);
+        sw.stop();
         assertEquals(Arrays.asList("Gustav-Adolf-Straße", "Funkenburgstraße"), fetchStreets(mr.getEdgeMatches()));
 
         // with small measurement error, we expect the U-turn
         mapMatching.setMeasurementErrorSigma(10);
-        mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)));
+        sw = new StopWatch().start();
+        mr = mapMatching.match(GpxConversions.getEntries(gpx.trk.get(0)), sw);
         assertEquals(Arrays.asList("Gustav-Adolf-Straße", "Funkenburgstraße"), fetchStreets(mr.getEdgeMatches()));
     }
 
