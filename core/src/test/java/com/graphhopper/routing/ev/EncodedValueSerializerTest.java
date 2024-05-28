@@ -33,7 +33,7 @@ class EncodedValueSerializerTest {
     public void serializationAndDeserialization() {
         List<EncodedValue> encodedValues = new ArrayList<>();
         // add enum, int, decimal and boolean encoded values
-        encodedValues.add(new EnumEncodedValue<>(RoadClass.KEY, RoadClass.class));
+        encodedValues.add(RoadClass.create());
         encodedValues.add(Lanes.create());
         encodedValues.add(MaxWidth.create());
         encodedValues.add(GetOffBike.create());
@@ -68,7 +68,11 @@ class EncodedValueSerializerTest {
     @Test
     void explicitString() {
         EncodedValue.InitializerConfig initializerConfig = new EncodedValue.InitializerConfig();
-        List<EncodedValue> evs = Arrays.asList(Lanes.create(), MaxWidth.create(), GetOffBike.create());
+        List<EncodedValue> evs = Arrays.asList(
+                Lanes.create(),
+                MaxWidth.create(),
+                GetOffBike.create()
+        );
         evs.forEach(ev -> ev.init(initializerConfig));
 
         List<String> serialized = evs.stream().map(EncodedValueSerializer::serializeEncodedValue).collect(Collectors.toList());
@@ -80,8 +84,8 @@ class EncodedValueSerializerTest {
                 "\"fwd_data_index\":0,\"bwd_data_index\":0,\"fwd_shift\":3,\"bwd_shift\":-1,\"fwd_mask\":1016,\"bwd_mask\":0," +
                 "\"factor\":0.1,\"use_maximum_as_infinity\":true}", serialized.get(1));
         assertEquals("{\"className\":\"com.graphhopper.routing.ev.SimpleBooleanEncodedValue\",\"name\":\"get_off_bike\",\"bits\":1," +
-                "\"min_storable_value\":0,\"max_storable_value\":1,\"max_value\":-2147483648,\"negate_reverse_direction\":false,\"store_two_directions\":false,\"fwd_data_index\":0," +
-                "\"bwd_data_index\":0,\"fwd_shift\":10,\"bwd_shift\":-1,\"fwd_mask\":1024,\"bwd_mask\":0}", serialized.get(2));
+                "\"min_storable_value\":0,\"max_storable_value\":1,\"max_value\":-2147483648,\"negate_reverse_direction\":false,\"store_two_directions\":true,\"fwd_data_index\":0," +
+                "\"bwd_data_index\":0,\"fwd_shift\":10,\"bwd_shift\":11,\"fwd_mask\":1024,\"bwd_mask\":2048}", serialized.get(2));
 
         EncodedValue ev0 = EncodedValueSerializer.deserializeEncodedValue(serialized.get(0));
         assertEquals("lanes", ev0.getName());
@@ -91,17 +95,4 @@ class EncodedValueSerializerTest {
         assertEquals("get_off_bike", ev2.getName());
     }
 
-    @Test
-    void initializerConfig() {
-        EncodedValue.InitializerConfig initializerConfig = new EncodedValue.InitializerConfig();
-        Lanes.create().init(initializerConfig);
-        MaxWidth.create().init(initializerConfig);
-        String s = EncodedValueSerializer.serializeInitializerConfig(initializerConfig);
-        assertEquals("{\"data_index\":0,\"shift\":3,\"next_shift\":10,\"bit_mask\":1016}", s);
-        EncodedValue.InitializerConfig deserialized = EncodedValueSerializer.deserializeInitializerConfig(s);
-        assertEquals(0, deserialized.dataIndex);
-        assertEquals(3, deserialized.shift);
-        assertEquals(10, deserialized.nextShift);
-        assertEquals(1016, deserialized.bitMask);
-    }
 }

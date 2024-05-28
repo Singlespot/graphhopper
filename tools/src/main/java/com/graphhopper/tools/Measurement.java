@@ -25,19 +25,16 @@ import com.graphhopper.coll.GHBitSetImpl;
 import com.graphhopper.config.CHProfile;
 import com.graphhopper.config.LMProfile;
 import com.graphhopper.config.Profile;
+import com.graphhopper.config.TurnCostsConfig;
 import com.graphhopper.jackson.Jackson;
+import com.graphhopper.routing.TestProfiles;
 import com.graphhopper.routing.ch.PrepareContractionHierarchies;
-import com.graphhopper.routing.ev.BooleanEncodedValue;
-import com.graphhopper.routing.ev.Subnetwork;
-import com.graphhopper.routing.ev.TurnCost;
-import com.graphhopper.routing.ev.VehicleAccess;
+import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.lm.LMConfig;
 import com.graphhopper.routing.lm.PrepareLandmarks;
 import com.graphhopper.routing.util.*;
 import com.graphhopper.routing.weighting.Weighting;
-import com.graphhopper.routing.weighting.custom.CustomProfile;
 import com.graphhopper.routing.weighting.custom.CustomWeighting;
-import com.graphhopper.search.EdgeKVStorage;
 import com.graphhopper.storage.*;
 import com.graphhopper.storage.index.LocationIndex;
 import com.graphhopper.util.*;
@@ -65,8 +62,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import static com.graphhopper.util.GHUtility.readCountries;
 import static com.graphhopper.util.Helper.*;
 import static com.graphhopper.util.Parameters.Algorithms.ALT_ROUTE;
-import static com.graphhopper.util.Parameters.Routing.BLOCK_AREA;
-import static com.graphhopper.util.Parameters.Routing.U_TURN_COSTS;
 
 /**
  * Used to run performance benchmarks for routing and other functionalities of GraphHopper
@@ -119,7 +114,6 @@ public class Measurement {
         int count = args.getInt("measurement.count", 5000);
         put("measurement.name", args.getString("measurement.name", "no_name"));
         put("measurement.map", args.getString("datareader.file", "unknown"));
-        String blockAreaStr = args.getString("measurement.block_area", "");
         final boolean useMeasurementTimeAsRefTime = args.getBool("measurement.use_measurement_time_as_ref_time", false);
         if (useMeasurementTimeAsRefTime && !useJson) {
             throw new IllegalArgumentException("Using measurement time as reference time only works with json files");
@@ -181,7 +175,7 @@ public class Measurement {
         BaseGraph g = hopper.getBaseGraph();
         EncodingManager encodingManager = hopper.getEncodingManager();
         BooleanEncodedValue accessEnc = encodingManager.getBooleanEncodedValue(VehicleAccess.key(vehicle));
-        boolean withTurnCosts = encodingManager.hasEncodedValue(TurnCost.key(vehicle));
+        boolean withTurnCosts = encodingManager.hasTurnEncodedValue(TurnRestriction.key("profile_tc"));
 
         StopWatch sw = new StopWatch().start();
         try {
@@ -207,9 +201,6 @@ public class Measurement {
                             edgeBased().alternative()
                     );
                 }
-                if (!blockAreaStr.isEmpty())
-                    measureRouting(hopper, new QuerySettings("routing_block_area", count / 20, isCH, isLM).
-                            withInstructions().blockArea(blockAreaStr));
             }
 
             if (hopper.getLMPreparationHandler().isEnabled()) {
@@ -229,11 +220,6 @@ public class Measurement {
                                         activeLandmarks(activeLMCount).edgeBased().alternative());
                             }
                         });
-
-                final int activeLMCount = 8;
-                if (!blockAreaStr.isEmpty())
-                    measureRouting(hopper, new QuerySettings("routingLM" + activeLMCount + "_block_area", count / 20, isCH, isLM).
-                            withInstructions().activeLandmarks(activeLMCount).blockArea(blockAreaStr));
             }
 
             if (hopper.getCHPreparationHandler().isEnabled()) {
@@ -309,27 +295,31 @@ public class Measurement {
     private GraphHopperConfig createConfigFromArgs(PMap args) {
         GraphHopperConfig ghConfig = new GraphHopperConfig(args);
         vehicle = args.getString("measurement.vehicle", "car");
+        ghConfig.putObject("graph.encoded_values", ghConfig.getString("graph.encoded_values", "") + ", " + VehicleAccess.key(vehicle) + "," + VehicleSpeed.key(vehicle));
         boolean turnCosts = args.getBool("measurement.turn_costs", false);
         int uTurnCosts = args.getInt("measurement.u_turn_costs", 40);
-        String weighting = args.getString("measurement.weighting", "fastest");
+        String weighting = args.getString("measurement.weighting", "custom");
         boolean useCHEdge = args.getBool("measurement.ch.edge", true);
         boolean useCHNode = args.getBool("measurement.ch.node", true);
         boolean useLM = args.getBool("measurement.lm", true);
         String customModelFile = args.getString("measurement.custom_model_file", "");
         List<Profile> profiles = new ArrayList<>();
+        if (turnCosts && !vehicle.equals("car"))
+            throw new IllegalArgumentException("turn costs not yet supported for: " + vehicle);
+        List<String> restrictionVehicleTypes = List.of("motorcar", "motor_vehicle");
         if (!customModelFile.isEmpty()) {
             if (!weighting.equals(CustomWeighting.NAME))
                 throw new IllegalArgumentException("To make use of a custom model you need to set measurement.weighting to 'custom'");
             // use custom profile(s) as specified in the given custom model file
             CustomModel customModel = loadCustomModel(customModelFile);
-            profiles.add(new CustomProfile("profile_no_tc").setCustomModel(customModel).setVehicle(vehicle).setTurnCosts(false));
+            profiles.add(new Profile("profile_no_tc").setCustomModel(customModel));
             if (turnCosts)
-                profiles.add(new CustomProfile("profile_tc").setCustomModel(customModel).setVehicle(vehicle).setTurnCosts(true).putHint(U_TURN_COSTS, uTurnCosts));
+                profiles.add(new Profile("profile_tc").setCustomModel(customModel).setTurnCostsConfig(new TurnCostsConfig(restrictionVehicleTypes, uTurnCosts)));
         } else {
             // use standard profiles
-            profiles.add(new Profile("profile_no_tc").setVehicle(vehicle).setWeighting(weighting).setTurnCosts(false));
+            profiles.add(TestProfiles.accessAndSpeed("profile_no_tc", vehicle));
             if (turnCosts)
-                profiles.add(new Profile("profile_tc").setVehicle(vehicle).setWeighting(weighting).setTurnCosts(true).putHint(U_TURN_COSTS, uTurnCosts));
+                profiles.add(TestProfiles.accessAndSpeed("profile_tc", vehicle).setTurnCostsConfig(new TurnCostsConfig(restrictionVehicleTypes, uTurnCosts)));
         }
         ghConfig.setProfiles(profiles);
 
@@ -356,7 +346,6 @@ public class Measurement {
         final boolean ch, lm;
         int activeLandmarks = -1;
         boolean withInstructions, withPointHints, sod, edgeBased, simplify, pathDetails, alternative;
-        String blockArea;
         int points = 2;
 
         QuerySettings(String prefix, int count, boolean isCH, boolean isLM) {
@@ -408,11 +397,6 @@ public class Measurement {
 
         QuerySettings alternative() {
             alternative = true;
-            return this;
-        }
-
-        QuerySettings blockArea(String str) {
-            blockArea = str;
             return this;
         }
     }
@@ -555,41 +539,25 @@ public class Measurement {
         MiniPerfTest miniPerf = new MiniPerfTest().setIterations(querySettings.count).start((warmup, run) -> {
             GHRequest req = new GHRequest(querySettings.points);
             IntArrayList nodes = new IntArrayList(querySettings.points);
-            // we try a few times to find points that do not lie within our blocked area
-            for (int i = 0; i < 5; i++) {
-                nodes.clear();
-                List<GHPoint> points = new ArrayList<>();
-                List<String> pointHints = new ArrayList<>();
-                int tries = 0;
-                while (nodes.size() < querySettings.points) {
-                    int node = rand.nextInt(maxNode);
-                    if (++tries > g.getNodes())
-                        throw new RuntimeException("Could not find accessible points");
-                    // probe location. it could be a pedestrian area or an edge removed in the subnetwork removal process
-                    if (GHUtility.count(edgeExplorer.setBaseNode(node)) == 0)
-                        continue;
-                    nodes.add(node);
-                    points.add(new GHPoint(na.getLat(node), na.getLon(node)));
-                    if (querySettings.withPointHints) {
-                        // we add some point hint to make sure the name similarity filter has to do some actual work
-                        pointHints.add("probably_not_found");
-                    }
-                }
-                req.setPoints(points);
-                req.setPointHints(pointHints);
-                if (querySettings.blockArea == null)
-                    break;
-                try {
-                    req.getHints().putObject(BLOCK_AREA, querySettings.blockArea);
-                    // run this method to check if creating the blocked area is possible
-                    GraphEdgeIdFinder.createBlockArea(hopper.getBaseGraph(), hopper.getLocationIndex(), req.getPoints(), req.getHints(), edgeFilter);
-                    break;
-                } catch (IllegalArgumentException ex) {
-                    if (i >= 4)
-                        throw new RuntimeException("Give up after 5 tries. Cannot find points outside of the block_area "
-                                + querySettings.blockArea + " - too big block_area or map too small? Request:" + req);
+            List<GHPoint> points = new ArrayList<>();
+            List<String> pointHints = new ArrayList<>();
+            int tries = 0;
+            while (nodes.size() < querySettings.points) {
+                int node = rand.nextInt(maxNode);
+                if (++tries > g.getNodes())
+                    throw new RuntimeException("Could not find accessible points");
+                // probe location. it could be a pedestrian area or an edge removed in the subnetwork removal process
+                if (GHUtility.count(edgeExplorer.setBaseNode(node)) == 0)
+                    continue;
+                nodes.add(node);
+                points.add(new GHPoint(na.getLat(node), na.getLon(node)));
+                if (querySettings.withPointHints) {
+                    // we add some point hint to make sure the name similarity filter has to do some actual work
+                    pointHints.add("probably_not_found");
                 }
             }
+            req.setPoints(points);
+            req.setPointHints(pointHints);
             req.setProfile(profileName);
             req.getHints().
                     putObject(CH.DISABLE, !querySettings.ch).
@@ -602,7 +570,8 @@ public class Measurement {
                 req.setAlgorithm(ALT_ROUTE);
 
             if (querySettings.pathDetails)
-                req.setPathDetails(Arrays.asList(Parameters.Details.AVERAGE_SPEED, Parameters.Details.EDGE_ID, Parameters.Details.STREET_NAME));
+                req.setPathDetails(Arrays.asList(Parameters.Details.AVERAGE_SPEED, Parameters.Details.EDGE_ID,
+                        Parameters.Details.STREET_NAME, "access_conditional", "vehicle_conditional", "motor_vehicle_conditional"));
 
             if (!querySettings.simplify)
                 req.getHints().putObject(Parameters.Routing.WAY_POINT_MAX_DISTANCE, 0);

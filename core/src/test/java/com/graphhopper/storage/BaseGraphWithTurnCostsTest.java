@@ -18,16 +18,17 @@
 package com.graphhopper.storage;
 
 import com.graphhopper.routing.ev.DecimalEncodedValue;
+import com.graphhopper.routing.ev.RoadClass;
 import com.graphhopper.routing.ev.TurnCost;
 import com.graphhopper.routing.util.EncodingManager;
-import com.graphhopper.search.EdgeKVStorage.KeyValue;
+import com.graphhopper.search.KVStorage.KeyValue;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.Helper;
 import org.junit.jupiter.api.Test;
 
 import java.util.Random;
 
-import static com.graphhopper.search.EdgeKVStorage.KeyValue.STREET_NAME;
+import static com.graphhopper.search.KVStorage.KeyValue.STREET_NAME;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,6 +45,7 @@ public class BaseGraphWithTurnCostsTest extends BaseGraphTest {
         return EncodingManager.start()
                 .add(carAccessEnc).add(carSpeedEnc).addTurnCostEncodedValue(turnCostEnc)
                 .add(footAccessEnc).add(footSpeedEnc)
+                .add(RoadClass.create())
                 .build();
     }
 

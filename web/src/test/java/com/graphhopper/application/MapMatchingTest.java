@@ -22,13 +22,13 @@ import com.graphhopper.GHRequest;
 import com.graphhopper.GraphHopper;
 import com.graphhopper.ResponsePath;
 import com.graphhopper.config.LMProfile;
-import com.graphhopper.config.Profile;
 import com.graphhopper.gpx.GpxConversions;
 import com.graphhopper.jackson.Gpx;
 import com.graphhopper.matching.EdgeMatch;
 import com.graphhopper.matching.MapMatching;
 import com.graphhopper.matching.MatchResult;
 import com.graphhopper.matching.Observation;
+import com.graphhopper.routing.TestProfiles;
 import com.graphhopper.util.*;
 import com.graphhopper.util.shapes.GHPoint;
 import org.junit.jupiter.api.AfterAll;
@@ -69,7 +69,8 @@ public class MapMatchingTest {
         graphHopper = new GraphHopper();
         graphHopper.setOSMFile("../map-matching/files/leipzig_germany.osm.pbf");
         graphHopper.setGraphHopperLocation(GH_LOCATION);
-        graphHopper.setProfiles(new Profile("my_profile").setVehicle("car").setWeighting("fastest"));
+        graphHopper.setEncodedValuesString("car_access, car_average_speed");
+        graphHopper.setProfiles(TestProfiles.accessAndSpeed("my_profile", "car"));
         graphHopper.getLMPreparationHandler().setLMProfiles(new LMProfile("my_profile"));
         graphHopper.importOrLoad();
     }
@@ -144,7 +145,7 @@ public class MapMatchingTest {
         assertEquals(route.getDistance(), mr.getMatchLength(), 0.5);
         // GraphHopper travel times aren't exactly additive
         assertThat(Math.abs(route.getTime() - mr.getMatchMillis()), is(lessThan(1000L)));
-        assertEquals(142, mr.getEdgeMatches().size());
+        assertEquals(202, mr.getEdgeMatches().size());
     }
 
     @ParameterizedTest
@@ -174,7 +175,7 @@ public class MapMatchingTest {
         StopWatch sw = new StopWatch().start();
         MatchResult mr = mapMatching.match(inputGPXEntries, sw);
         sw.stop();
-        assertEquals(57553.0, mr.getMatchLength(), 1.0);
+        assertEquals(57651, mr.getMatchLength(), 1.0);
     }
 
     @ParameterizedTest

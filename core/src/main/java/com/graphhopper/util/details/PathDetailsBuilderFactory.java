@@ -17,6 +17,7 @@
  */
 package com.graphhopper.util.details;
 
+import com.graphhopper.routing.Path;
 import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.Graph;
@@ -33,9 +34,23 @@ import static com.graphhopper.util.Parameters.Details.*;
  */
 public class PathDetailsBuilderFactory {
 
-    public List<PathDetailsBuilder> createPathDetailsBuilders(List<String> requestedPathDetails, EncodedValueLookup evl, Weighting weighting, Graph graph) {
+    public List<PathDetailsBuilder> createPathDetailsBuilders(List<String> requestedPathDetails, Path path, EncodedValueLookup evl, Weighting weighting, Graph graph) {
         List<PathDetailsBuilder> builders = new ArrayList<>();
 
+        if (requestedPathDetails.contains(LEG_TIME))
+            builders.add(new ConstantDetailsBuilder(LEG_TIME, path.getTime()));
+        if (requestedPathDetails.contains(LEG_DISTANCE))
+            builders.add(new ConstantDetailsBuilder(LEG_DISTANCE, path.getDistance()));
+        if (requestedPathDetails.contains(LEG_WEIGHT))
+            builders.add(new ConstantDetailsBuilder(LEG_WEIGHT, path.getWeight()));
+
+        for (String key : requestedPathDetails) {
+            if (key.endsWith("_conditional"))
+                builders.add(new KVStringDetails(key));
+        }
+
+        if (requestedPathDetails.contains(MOTORWAY_JUNCTION))
+            builders.add(new KVStringDetails(MOTORWAY_JUNCTION));
         if (requestedPathDetails.contains(STREET_NAME))
             builders.add(new KVStringDetails(STREET_NAME));
         if (requestedPathDetails.contains(STREET_REF))
@@ -65,7 +80,8 @@ public class PathDetailsBuilderFactory {
             builders.add(new IntersectionDetails(graph, weighting));
 
         for (String pathDetail : requestedPathDetails) {
-            if (!evl.hasEncodedValue(pathDetail)) continue; // path details like "time" won't be found
+            if (!evl.hasEncodedValue(pathDetail))
+                continue; // path details like "time" won't be found
 
             EncodedValue ev = evl.getEncodedValue(pathDetail, EncodedValue.class);
             if (ev instanceof DecimalEncodedValue)
@@ -78,12 +94,16 @@ public class PathDetailsBuilderFactory {
                 builders.add(new StringDetails(pathDetail, (StringEncodedValue) ev));
             else if (ev instanceof IntEncodedValue)
                 builders.add(new IntDetails(pathDetail, (IntEncodedValue) ev));
-            else throw new IllegalArgumentException("unknown EncodedValue class " + ev.getClass().getName());
+            else
+                throw new IllegalArgumentException("unknown EncodedValue class " + ev.getClass().getName());
         }
 
-        if (requestedPathDetails.size() != builders.size()) {
-            throw new IllegalArgumentException("You requested the details " + requestedPathDetails + " but we could only find " + builders);
-        }
+        if (requestedPathDetails.size() > builders.size()) {
+            ArrayList<String> clonedArr = new ArrayList<>(requestedPathDetails); // avoid changing request parameter
+            for (PathDetailsBuilder pdb : builders) clonedArr.remove(pdb.getName());
+            throw new IllegalArgumentException("Cannot find the path details: " + clonedArr);
+        } else if (requestedPathDetails.size() < builders.size())
+            throw new IllegalStateException("It should not happen that there are more path details added " + builders + " than requested " + requestedPathDetails);
 
         return builders;
     }

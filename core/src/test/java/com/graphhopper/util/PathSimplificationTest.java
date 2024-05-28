@@ -21,13 +21,11 @@ import com.graphhopper.ResponsePath;
 import com.graphhopper.routing.Dijkstra;
 import com.graphhopper.routing.InstructionsFromEdges;
 import com.graphhopper.routing.Path;
-import com.graphhopper.routing.ev.BooleanEncodedValue;
-import com.graphhopper.routing.ev.DecimalEncodedValue;
-import com.graphhopper.routing.ev.DecimalEncodedValueImpl;
-import com.graphhopper.routing.ev.SimpleBooleanEncodedValue;
+import com.graphhopper.routing.ev.*;
 import com.graphhopper.routing.util.EncodingManager;
 import com.graphhopper.routing.util.TraversalMode;
-import com.graphhopper.routing.weighting.ShortestWeighting;
+import com.graphhopper.routing.weighting.SpeedWeighting;
+import com.graphhopper.routing.weighting.Weighting;
 import com.graphhopper.storage.BaseGraph;
 import com.graphhopper.storage.NodeAccess;
 import com.graphhopper.util.details.PathDetail;
@@ -37,8 +35,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
-import static com.graphhopper.search.EdgeKVStorage.KeyValue.STREET_NAME;
-import static com.graphhopper.search.EdgeKVStorage.KeyValue.createKV;
+import static com.graphhopper.search.KVStorage.KeyValue.STREET_NAME;
+import static com.graphhopper.search.KVStorage.KeyValue.createKV;
 import static com.graphhopper.util.Parameters.Details.AVERAGE_SPEED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -54,9 +52,9 @@ public class PathSimplificationTest {
 
     @Test
     public void testScenario() {
-        BooleanEncodedValue accessEnc = new SimpleBooleanEncodedValue("access", true);
         DecimalEncodedValue speedEnc = new DecimalEncodedValueImpl("speed", 5, 5, false);
-        EncodingManager carManager = EncodingManager.start().add(accessEnc).add(speedEnc).build();
+        EncodingManager carManager = EncodingManager.start().add(speedEnc)
+                .add(Roundabout.create()).add(RoadClass.create()).add(RoadClassLink.create()).add(MaxSpeed.create()).build();
         BaseGraph g = new BaseGraph.Builder(carManager).create();
         // 0-1-2
         // | | |
@@ -77,19 +75,19 @@ public class PathSimplificationTest {
         na.setNode(7, 1.0, 1.1);
         na.setNode(8, 1.0, 1.2);
 
-        GHUtility.setSpeed(9, true, true, accessEnc, speedEnc, g.edge(0, 1).setDistance(10000)).setKeyValues(createKV(STREET_NAME, "0-1"));
-        GHUtility.setSpeed(9, true, true, accessEnc, speedEnc, g.edge(1, 2).setDistance(11000)).setKeyValues(createKV(STREET_NAME, "1-2"));
+        g.edge(0, 1).set(speedEnc, 9).setDistance(10000).setKeyValues(createKV(STREET_NAME, "0-1"));
+        g.edge(1, 2).set(speedEnc, 9).setDistance(11000).setKeyValues(createKV(STREET_NAME, "1-2"));
 
-        GHUtility.setSpeed(18, true, true, accessEnc, speedEnc, g.edge(0, 3).setDistance(11000));
-        GHUtility.setSpeed(18, true, true, accessEnc, speedEnc, g.edge(1, 4).setDistance(10000)).setKeyValues(createKV(STREET_NAME, "1-4"));
-        GHUtility.setSpeed(18, true, true, accessEnc, speedEnc, g.edge(2, 5).setDistance(11000)).setKeyValues(createKV(STREET_NAME, "5-2"));
+        g.edge(0, 3).set(speedEnc, 18).setDistance(11000);
+        g.edge(1, 4).set(speedEnc, 18).setDistance(10000).setKeyValues(createKV(STREET_NAME, "1-4"));
+        g.edge(2, 5).set(speedEnc, 18).setDistance(11000).setKeyValues(createKV(STREET_NAME, "5-2"));
 
-        GHUtility.setSpeed(27, true, true, accessEnc, speedEnc, g.edge(3, 6).setDistance(11000)).setKeyValues(createKV(STREET_NAME, "3-6"));
-        GHUtility.setSpeed(27, true, true, accessEnc, speedEnc, g.edge(4, 7).setDistance(10000)).setKeyValues(createKV(STREET_NAME, "4-7"));
-        GHUtility.setSpeed(27, true, true, accessEnc, speedEnc, g.edge(5, 8).setDistance(10000)).setKeyValues(createKV(STREET_NAME, "5-8"));
+        g.edge(3, 6).set(speedEnc, 27).setDistance(11000).setKeyValues(createKV(STREET_NAME, "3-6"));
+        g.edge(4, 7).set(speedEnc, 27).setDistance(10000).setKeyValues(createKV(STREET_NAME, "4-7"));
+        g.edge(5, 8).set(speedEnc, 27).setDistance(10000).setKeyValues(createKV(STREET_NAME, "5-8"));
 
-        GHUtility.setSpeed(36, true, true, accessEnc, speedEnc, g.edge(6, 7).setDistance(11000)).setKeyValues(createKV(STREET_NAME, "6-7"));
-        EdgeIteratorState tmpEdge = GHUtility.setSpeed(36, true, true, accessEnc, speedEnc, g.edge(7, 8).setDistance(10000));
+        g.edge(6, 7).setDistance(11000).set(speedEnc, 36).setKeyValues(createKV(STREET_NAME, "6-7"));
+        EdgeIteratorState tmpEdge = g.edge(7, 8).set(speedEnc, 36).setDistance(10000);
         PointList list = new PointList();
         list.add(1.0, 1.15);
         list.add(1.0, 1.16);
@@ -97,8 +95,8 @@ public class PathSimplificationTest {
         tmpEdge.setKeyValues(createKV(STREET_NAME, "7-8"));
 
         // missing edge name
-        GHUtility.setSpeed(45, true, true, accessEnc, speedEnc, g.edge(9, 10).setDistance(10000));
-        tmpEdge = GHUtility.setSpeed(45, true, true, accessEnc, speedEnc, g.edge(8, 9).setDistance(20000));
+        g.edge(9, 10).set(speedEnc, 45).setDistance(10000);
+        tmpEdge = g.edge(8, 9).set(speedEnc, 45).setDistance(20000);
         list.clear();
         list.add(1.0, 1.3);
         list.add(1.0, 1.3001);
@@ -108,18 +106,26 @@ public class PathSimplificationTest {
         tmpEdge.setWayGeometry(list);
 
         // Path is: [0 0-1, 3 1-4, 6 4-7, 9 7-8, 11 8-9, 10 9-10]
-        ShortestWeighting weighting = new ShortestWeighting(accessEnc, speedEnc);
+        Weighting weighting = new SpeedWeighting(speedEnc);
         Path p = new Dijkstra(g, weighting, tMode).calcPath(0, 10);
         InstructionList wayList = InstructionsFromEdges.calcInstructions(p, g, weighting, carManager, usTR);
         Map<String, List<PathDetail>> details = PathDetailsFromEdges.calcDetails(p, carManager, weighting,
-                Arrays.asList(AVERAGE_SPEED), new PathDetailsBuilderFactory(), 0, g);
+                List.of(AVERAGE_SPEED), new PathDetailsBuilderFactory(), 0, g);
+
+        PointList points = p.calcPoints();
+        PointList waypoints = new PointList(2, g.getNodeAccess().is3D());
+        waypoints.add(g.getNodeAccess(), 0);
+        waypoints.add(g.getNodeAccess(), 10);
+        List<Integer> waypointIndices = Arrays.asList(0, points.size() - 1);
 
         ResponsePath responsePath = new ResponsePath();
         responsePath.setInstructions(wayList);
         responsePath.addPathDetails(details);
-        responsePath.setPoints(p.calcPoints());
+        responsePath.setPoints(points);
+        responsePath.setWaypoints(waypoints);
+        responsePath.setWaypointIndices(waypointIndices);
 
-        int numberOfPoints = p.calcPoints().size();
+        int numberOfPoints = points.size();
 
         RamerDouglasPeucker ramerDouglasPeucker = new RamerDouglasPeucker();
         // Do not simplify anything
@@ -133,6 +139,8 @@ public class PathSimplificationTest {
         responsePath.setInstructions(wayList);
         responsePath.addPathDetails(details);
         responsePath.setPoints(p.calcPoints());
+        responsePath.setWaypoints(waypoints);
+        responsePath.setWaypointIndices(waypointIndices);
 
         ramerDouglasPeucker.setMaxDistance(100000000);
         PathSimplification.simplify(responsePath, ramerDouglasPeucker, true);
@@ -190,7 +198,7 @@ public class PathSimplificationTest {
     public void testMultiplePartitions() {
         // points are chosen such that DP will remove those marked with an x
         // got this data from running a request like this:
-        // http://localhost:8989/maps/?point=48.891273%2C9.325418&point=48.891005%2C9.322865&point=48.889877%2C9.32102&point=48.88975%2C9.31999&vehicle=car&weighting=fastest&elevation=true&debug=true&details=max_speed&details=street_name&
+        // http://localhost:8989/maps/?point=48.891273%2C9.325418&point=48.891005%2C9.322865&point=48.889877%2C9.32102&point=48.88975%2C9.31999&profile=car&weighting=fastest&elevation=true&debug=true&details=max_speed&details=street_name&
         PointList points = new PointList(20, true);
         points.add(48.89089, 9.32538, 270.0); // 0    -> 0
         points.add(48.89090, 9.32527, 269.0); // 1 x

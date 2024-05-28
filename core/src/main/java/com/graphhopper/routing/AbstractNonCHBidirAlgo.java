@@ -39,7 +39,7 @@ import static com.graphhopper.util.EdgeIterator.ANY_EDGE;
  * @author easbar
  * @see AbstractBidirCHAlgo for bidirectional CH algorithms
  */
-public abstract class AbstractNonCHBidirAlgo extends AbstractBidirAlgo implements BidirRoutingAlgorithm {
+public abstract class AbstractNonCHBidirAlgo extends AbstractBidirAlgo implements EdgeToEdgeRoutingAlgorithm {
     protected final Graph graph;
     protected final NodeAccess nodeAccess;
     protected final Weighting weighting;
@@ -194,7 +194,7 @@ public abstract class AbstractNonCHBidirAlgo extends AbstractBidirAlgo implement
     protected double calcWeight(EdgeIteratorState iter, SPTEntry currEdge, boolean reverse) {
         // note that for node-based routing the weights will be wrong in case the weighting is returning non-zero
         // turn weights, see discussion in #1960
-        return GHUtility.calcWeightWithTurnWeightWithAccess(weighting, iter, reverse, currEdge.edge) + currEdge.getWeightOfVisitedPath();
+        return GHUtility.calcWeightWithTurnWeight(weighting, iter, reverse, currEdge.edge) + currEdge.getWeightOfVisitedPath();
     }
 
     @Override
