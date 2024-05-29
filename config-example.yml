@@ -29,32 +29,33 @@ graphhopper:
   # profiles (see below). Or at least limit the number of `routing.max_visited_nodes`.
 
   profiles:
+    #    OLD Profiles 2024-05-29
+    #    - name: car
+    #      vehicle: car
+    #      weighting: fastest
+    #    - name: bike
+    #      vehicle: bike
+    #      weighting: fastest
+    #    - name: foot
+    #      vehicle: foot
+    #      weighting: fastest
     - name: car
-      vehicle: car
-      weighting: fastest
-    - name: bike
-      vehicle: bike
-      weighting: fastest
-    - name: foot
-      vehicle: foot
-      weighting: fastest
-#   - name: car
-#     turn_costs:
-#       vehicle_types: [motorcar, motor_vehicle]
-#       u_turn_costs: 60
-#     custom_model_files: [car.json]
+      turn_costs:
+        vehicle_types: [ motorcar, motor_vehicle ]
+        u_turn_costs: 60
+      custom_model_files: [ car.json ]
 
-#    - name: foot
-#      custom_model_files: [foot.json, foot_elevation.json]
-#
-#    - name: bike
-#      custom_model_files: [bike.json, bike_elevation.json]
-#
-#    - name: racingbike
-#      custom_model_files: [racingbike.json, bike_elevation.json]
-#
-#    - name: mtb
-#      custom_model_files: [mtb.json, bike_elevation.json]
+    - name: foot
+      custom_model_files: [ foot.json, foot_elevation.json ]
+
+    - name: bike
+      custom_model_files: [ bike.json, bike_elevation.json ]
+  #
+  #    - name: racingbike
+  #      custom_model_files: [racingbike.json, bike_elevation.json]
+  #
+  #    - name: mtb
+  #      custom_model_files: [mtb.json, bike_elevation.json]
 
   # instead of the inbuilt custom models (see ./core/src/main/resources/com/graphhopper/custom_models)
   # you can specify a folder where to find your own custom model files
@@ -80,7 +81,7 @@ graphhopper:
   # profile for which an LM profile exists. Important: This only will give correct routing results if the weights
   # calculated for the profile are equal or larger (for every edge) than those calculated for the profile that was used
   # for the preparation (`my_other_profile`)
-  profiles_lm: []
+  profiles_lm: [ ]
 
 
   #### Encoded Values ####
@@ -90,7 +91,7 @@ graphhopper:
   # More are: surface,smoothness,max_width,max_height,max_weight,max_weight_except,hgv,max_axle_load,max_length,
   #           hazmat,hazmat_tunnel,hazmat_water,lanes,osm_way_id,toll,track_type,mtb_rating,hike_rating,horse_rating,
   #           country,curvature,average_slope,max_slope,car_temporal_access,bike_temporal_access,foot_temporal_access
-  graph.encoded_values: car_access, car_average_speed
+  graph.encoded_values: car_access, car_average_speed, foot_access, hike_rating, foot_priority, foot_average_speed, average_slope, bike_priority, bike_access, roundabout, bike_average_speed
 
   #### Speed, hybrid and flexible mode ####
 
@@ -196,8 +197,9 @@ graphhopper:
   # motorized vehicles. This leads to a smaller and less dense graph, because there are fewer ways (obviously),
   # but also because there are fewer crossings between highways (=junctions).
   # Another typical example is excluding 'motorway', 'trunk' and maybe 'primary' highways for bicycle or pedestrian routing.
-#  import.osm.ignored_highways: footway,cycleway,path,pedestrian,steps # typically useful for motorized-only routing
+  #  import.osm.ignored_highways: footway,cycleway,path,pedestrian,steps # typically useful for motorized-only routing
   # import.osm.ignored_highways: motorway,trunk # typically useful for non-motorized routing
+  import.osm.ignored_highways:
 
   # configure the memory access, use RAM_STORE for well equipped servers (default and recommended)
   graph.dataaccess.default_type: RAM_STORE
@@ -222,14 +224,14 @@ graphhopper:
 # Dropwizard server configuration
 server:
   application_connectors:
-  - type: http
-    port: 8989
-    # for security reasons bind to localhost
-    bind_host: 0.0.0.0
-    # increase GET request limit - not necessary if /maps UI is not used or used without custom models
-#    max_request_header_size: 50k
+    - type: http
+      port: 8989
+      # for security reasons bind to localhost
+      bind_host: 0.0.0.0
+      # increase GET request limit - not necessary if /maps UI is not used or used without custom models
+  #    max_request_header_size: 50k
   request_log:
-      appenders: []
+    appenders: [ ]
   admin_connectors:
     - type: http
       port: 8990
