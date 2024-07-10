@@ -202,7 +202,6 @@ public class MapMatchingResource {
                     int i = 0;
                     assert matchResult.getEdgeMatches().size() == responsePath.getPathDetails().get("edge_key").size();
                     for (EdgeMatch em : matchResult.getEdgeMatches()) {
-//                        DistanceCalc distanceCalc = new DistancePlaneProjection();
                         if (em.getStates().size() > 0) {
                             for (State state : em.getStates()) {
                                 GHPoint point = state.getEntry().getPoint();
