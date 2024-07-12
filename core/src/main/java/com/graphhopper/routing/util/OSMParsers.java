@@ -83,7 +83,18 @@ public class OSMParsers {
             return true;
         else if ("platform".equals(way.getTag("railway")))
             return true;
-        else
+            // we accept ways with a 'railway' tag and the following values: light_rail, rail, monorail, subway, funicular, tram, narrow_gauge
+        else if (
+                way.hasTag("railway", "light_rail")
+                        || way.hasTag("railway", "rail")
+                        || way.hasTag("railway", "monorail")
+                        || way.hasTag("railway", "subway")
+                        || way.hasTag("railway", "funicular")
+                        || way.hasTag("railway", "tram")
+                        || way.hasTag("railway", "narrow_gauge")
+        ) {
+            return true;
+        } else
             return false;
     }
 
